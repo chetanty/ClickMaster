@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Click Game</title>
+</head>
+<body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    let playerName = '';
+    let roomName = '';
+
+    function createRoom() {
+      playerName = prompt('Enter your name:');
+      roomName = prompt('Enter room name:');
+      socket.emit('createRoom', roomName, playerName);
+    }
+
+    function joinRoom() {
+      playerName = prompt('Enter your name:');
+      roomName = prompt('Enter room name:');
+      socket.emit('joinRoom', roomName, playerName);
+    }
+
+    function clickButton() {
+      socket.emit('click', roomName);
+    }
+
+    function ready() {
+      socket.emit('ready', roomName);
+    }
+
+    socket.on('updatePlayers', (players) => {
+      const playerList = document.getElementById('player-list');
+      playerList.innerHTML = '';
+      players.forEach((player) => {
+        const li = document.createElement('li');
+        li.textContent = player.name + ' (' + player.clicks + ' clicks)';
+        playerList.appendChild(li);
+      });
+    });
+
+    socket.on('playerReady', (playerName) => {
+      console.log(`${playerName} is ready!`);
+    });
+
+    socket.on('startGame', () => {
+      console.log('Game started!');
+      const gameStatus = document.getElementById('game-status');
+      let timer = 10;
+      gameStatus.textContent = `Timer: ${timer}`;
+
+      const countdown = setInterval(() => {
+        timer--;
+        gameStatus.textContent = `Timer: ${timer}`;
+        if (timer === 0) {
+          clearInterval(countdown);
+        }
+      }, 1000);
+    });
+
+    socket.on('updateClicks', (clicks) => {
+      const clicksElement = document.getElementById('clicks');
+      clicksElement.textContent = `Clicks: ${clicks}`;
+    });
+
+    socket.on('gameOver', (scores) => {
+      console.log('Game over!', scores);
+      const winnerElement = document.getElementById('winner');
+      const scoreDifferenceElement = document.getElementById('score-difference');
+
+      const winner = scores.reduce((prev, current) =>
+        prev.clicks > current.clicks ? prev : current
+      );
+
+      winnerElement.textContent = `Winner: ${winner.name}`;
+      scoreDifferenceElement.textContent = `Score Difference: ${winner.clicks} clicks`;
+
+      const playerList = document.getElementById('player-list');
+      playerList.innerHTML = '';
+    });
+
+    socket.on('errorMessage', (message) => {
+      alert(message);
+    });
+  </script>
+  <button onclick="createRoom()">Create Room</button>
+  <button onclick="joinRoom()">Join Room</button>
+  <button onclick="clickButton()">Click!</button>
+  <button onclick="ready()">Ready</button>
+  <h3>Player List:</h3>
+  <ul id="player-list"></ul>
+  <h3 id="game-status"></h3>
+  <h3 id="clicks"></h3>
+  <h3 id="winner"></h3>
+</body>
+</html>
